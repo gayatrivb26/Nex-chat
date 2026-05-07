@@ -1,0 +1,79 @@
+# ============================================================
+# NexChat - Prometheus Configuration
+# ============================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: nexchat-local
+    env: development
+
+# Alertmanager config (add when needed)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Rule files
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+
+  # --- Prometheus self-monitoring ---
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  # --- NexChat API instances ---
+  - job_name: nexchat-api
+    metrics_path: /metrics
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+          - api:5000
+          - api-2:5000
+          - api-3:5000
+        labels:
+          service: nexchat-api
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+):(\d+)'
+        replacement: '$1'
+
+  # --- PostgreSQL via postgres_exporter ---
+  - job_name: postgres
+    static_configs:
+      - targets: [postgres-exporter:9187]
+        labels:
+          service: postgres
+
+  # --- Redis via redis_exporter ---
+  - job_name: redis
+    static_configs:
+      - targets: [redis-exporter:9121]
+        labels:
+          service: redis
+
+  # --- Kafka via kafka_exporter ---
+  - job_name: kafka
+    static_configs:
+      - targets: [kafka-exporter:9308]
+        labels:
+          service: kafka
+
+  # --- Nginx via nginx_exporter ---
+  - job_name: nginx
+    static_configs:
+      - targets: [nginx:9113]
+        labels:
+          service: nginx
+
+  # --- Node exporter (host metrics) ---
+  - job_name: node
+    static_configs:
+      - targets: [node-exporter:9100]
+        labels:
+          service: host

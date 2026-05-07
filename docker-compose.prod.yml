@@ -1,0 +1,101 @@
+version: "3.9"
+
+# ============================================================
+# NexChat - Docker Compose PRODUCTION override
+# ============================================================
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# ============================================================
+
+services:
+
+  api:
+    build:
+      target: production
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  api-2:
+    build:
+      target: production
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+
+  api-3:
+    build:
+      target: production
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+
+  frontend:
+    build:
+      target: production
+
+  nginx:
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/conf.d/default.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/nginx/ssl/:/etc/nginx/ssl/:ro
+
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  kafka:
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+
+  elasticsearch:
+    environment:
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  # Remove dev-only services in production
+  mailhog:
+    profiles: ["dev-only"]
+
+  kafka-ui:
+    profiles: ["dev-only"]

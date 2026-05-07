@@ -1,0 +1,60 @@
+{
+  "name": "nexchat",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build",
+    "test": "ng test",
+    "electron": "electron .",
+    "electron:dev": "concurrently \"npm:start\" \"wait-on http://localhost:4200 && electron .\"",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "@angular/animations": "^17.3.0",
+    "@angular/cdk": "^17.3.0",
+    "@angular/common": "^17.3.0",
+    "@angular/compiler": "^17.3.0",
+    "@angular/core": "^17.3.0",
+    "@angular/forms": "^17.3.0",
+    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser-dynamic": "^17.3.0",
+    "@angular/router": "^17.3.0",
+    "@angular/service-worker": "^17.3.0",
+    "@microsoft/signalr": "^8.0.7",
+    "@ngrx/effects": "^17.2.0",
+    "@ngrx/store": "^17.2.0",
+    "rxjs": "^7.8.1",
+    "tslib": "^2.6.2",
+    "zone.js": "^0.14.4"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^17.3.0",
+    "@angular/cli": "^17.3.0",
+    "@angular/compiler-cli": "^17.3.0",
+    "concurrently": "^8.2.2",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-updater": "^6.1.8",
+    "typescript": "~5.4.5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.nexchat.desktop",
+    "productName": "NexChat",
+    "files": [
+      "dist/nexchat/browser/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "rpm"]
+    }
+  }
+}
