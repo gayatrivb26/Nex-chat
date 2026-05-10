@@ -1,8 +1,5 @@
 using ChatApp.Domain.Entities;
-using ChatApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using System.Text.Json;
 
 namespace ChatApp.Infrastructure.Data;
 
@@ -29,11 +26,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         mb.HasDefaultSchema("public");
 
-        // Global query filters
+        // ── Global query filters ──────────────────────────────────────
+        // Only filter soft-deleted Users — consumers check IsDeleted explicitly for other needs
         mb.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
+
+        // Conversations: hide hard-deleted ones globally
         mb.Entity<Conversation>().HasQueryFilter(c => !c.IsDeleted);
-        mb.Entity<Message>().HasQueryFilter(m => !m.IsDeleted || m.DeleteForEveryone == false);
-        mb.Entity<ConversationMember>().HasQueryFilter(m => m.LeftAt == null);
+
+        // Messages: hide "deleted for everyone". Sender-deleted messages are
+        // still visible to sender — handled in service/query layer, NOT here.
+        // A global filter on IsDeleted would break sender's "deleted" view.
+        // We intentionally DO NOT filter messages here.
+
+        // ConversationMembers: DO NOT filter by LeftAt globally.
+        // Left members still need to be fetched for: history access, admin checks,
+        // and private conversation lookup. Apply LeftAt filter per-query instead.
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -46,14 +53,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        // Dispatch domain events before saving
-        var entities = ChangeTracker.Entries<BaseEntity>()
-            .Where(e => e.Entity.DomainEvents.Any())
-            .ToList();
-
-        // Note: domain event dispatching is handled by the DomainEventDispatcher service
-        // called from the application layer after SaveChanges
-
+        // Future: dispatch domain events via IPublisher here if needed
         return base.SaveChangesAsync(ct);
     }
 }

@@ -1,19 +1,45 @@
 namespace ChatApp.API.Middleware;
 
-public class SecurityHeadersMiddleware(RequestDelegate next)
+/// <summary>
+/// Adds security headers to every response.
+/// CSP is intentionally permissive for development; tighten for production.
+/// </summary>
+public class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment env)
 {
+    // Single-line CSP — no string concatenation that produces duplicate headers
+    private const string CspDevelopment =
+        "default-src 'self'; " +
+        "connect-src 'self' ws://localhost wss://localhost http://localhost:9000 https://localhost:9000; " +
+        "img-src 'self' data: blob: http://localhost:9000; " +
+        "media-src 'self' blob:; " +
+        "script-src 'self' 'unsafe-inline'; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "frame-ancestors 'none';";
+
+    private const string CspProduction =
+        "default-src 'self'; " +
+        "connect-src 'self' wss: https:; " +
+        "img-src 'self' data: blob: https:; " +
+        "media-src 'self' blob: https:; " +
+        "script-src 'self'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "frame-ancestors 'none';";
+
     public async Task InvokeAsync(HttpContext context)
     {
         var headers = context.Response.Headers;
+
         headers.TryAdd("X-Frame-Options", "DENY");
         headers.TryAdd("X-Content-Type-Options", "nosniff");
+        headers.TryAdd("X-XSS-Protection", "1; mode=block");
         headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
         headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
         headers.TryAdd("Content-Security-Policy",
-            "default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob: https:; media-src 'self' blob: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'");
+            env.IsDevelopment() ? CspDevelopment : CspProduction);
 
-        if (context.Request.IsHttps)
-            headers.TryAdd("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+        if (!env.IsDevelopment())
+            headers.TryAdd("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 
         await next(context);
     }
