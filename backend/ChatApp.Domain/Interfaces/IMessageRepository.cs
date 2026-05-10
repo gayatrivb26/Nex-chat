@@ -13,5 +13,6 @@ public interface IMessageRepository : IRepository<Message>
     Task<IEnumerable<Message>> GetUndeliveredMessagesAsync(Guid userId, CancellationToken ct = default);
     Task BulkUpdateStatusAsync(IEnumerable<Guid> messageIds, Guid userId,
         MessageStatusType status, CancellationToken ct = default);
+    Task BulkMarkReadUpToAsync(Guid conversationId, Guid userId, DateTime upToCreatedAt, CancellationToken ct = default);
     Task<int> GetUnreadCountAsync(Guid conversationId, Guid userId, Guid? lastReadMessageId, CancellationToken ct = default);
 }

@@ -6,18 +6,17 @@ namespace ChatApp.API.Middleware;
 /// </summary>
 public class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment env)
 {
-    // Single-line CSP — no string concatenation that produces duplicate headers
-    private const string CspDevelopment =
+    private const string CspDev =
         "default-src 'self'; " +
-        "connect-src 'self' ws://localhost wss://localhost http://localhost:9000 https://localhost:9000; " +
+        "connect-src 'self' ws://localhost wss://localhost http://localhost:9000; " +
         "img-src 'self' data: blob: http://localhost:9000; " +
         "media-src 'self' blob:; " +
         "script-src 'self' 'unsafe-inline'; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
         "frame-ancestors 'none';";
-
-    private const string CspProduction =
+ 
+    private const string CspProd =
         "default-src 'self'; " +
         "connect-src 'self' wss: https:; " +
         "img-src 'self' data: blob: https:; " +
@@ -25,22 +24,20 @@ public class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment
         "script-src 'self'; " +
         "style-src 'self' 'unsafe-inline'; " +
         "frame-ancestors 'none';";
-
-    public async Task InvokeAsync(HttpContext context)
+ 
+    public async Task InvokeAsync(HttpContext ctx)
     {
-        var headers = context.Response.Headers;
-
-        headers.TryAdd("X-Frame-Options", "DENY");
-        headers.TryAdd("X-Content-Type-Options", "nosniff");
-        headers.TryAdd("X-XSS-Protection", "1; mode=block");
-        headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
-        headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-        headers.TryAdd("Content-Security-Policy",
-            env.IsDevelopment() ? CspDevelopment : CspProduction);
-
+        var h = ctx.Response.Headers;
+        h.TryAdd("X-Frame-Options",         "DENY");
+        h.TryAdd("X-Content-Type-Options",  "nosniff");
+        h.TryAdd("X-XSS-Protection",        "1; mode=block");
+        h.TryAdd("Referrer-Policy",         "strict-origin-when-cross-origin");
+        h.TryAdd("Permissions-Policy",      "camera=(), microphone=(), geolocation=()");
+        h.TryAdd("Content-Security-Policy", env.IsDevelopment() ? CspDev : CspProd);
+ 
         if (!env.IsDevelopment())
-            headers.TryAdd("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
-
-        await next(context);
+            h.TryAdd("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+ 
+        await next(ctx);
     }
 }

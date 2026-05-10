@@ -14,6 +14,8 @@ public class RefreshTokenHandler(
 {
     public async Task<AuthResponse> Handle(RefreshTokenCommand cmd, CancellationToken ct)
     {
+        // Reference cacheSvc to avoid CS9113 if not used yet
+        _ = cacheSvc;
         var familyId = tokenSvc.TryGetRefreshTokenFamilyId(cmd.RawToken)
             ?? throw new UnauthorizedAccessException("Invalid refresh token.");
 

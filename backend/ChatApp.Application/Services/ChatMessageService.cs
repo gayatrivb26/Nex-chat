@@ -3,7 +3,6 @@ using ChatApp.Application.Interfaces;
 using ChatApp.Domain.Entities;
 using ChatApp.Domain.Enums;
 using ChatApp.Domain.Interfaces;
-using ChatApp.Infrastructure.Data.Repositories;
 
 namespace ChatApp.Application.Services;
 
@@ -140,10 +139,7 @@ public class ChatMessageService(
         member.LastReadAt = DateTime.UtcNow;
 
         // Bulk-mark all messages up to lastReadMessageId as read
-        if (uow.Messages is MessageRepository repo)
-            await repo.BulkMarkReadUpToAsync(conversationId, userId, lastReadMsg.CreatedAt, ct);
-        else
-            await uow.Messages.BulkUpdateStatusAsync([lastReadMessageId], userId, MessageStatusType.Read, ct);
+        await uow.Messages.BulkMarkReadUpToAsync(conversationId, userId, lastReadMsg.CreatedAt, ct);
 
         await uow.SaveChangesAsync(ct);
         await cache.RemoveAsync($"user:{userId}:unread_count", ct);

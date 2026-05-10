@@ -14,6 +14,7 @@ secrets/
 *.env.override
 
 # --- .NET ---
+.vs/
 backend/**/bin/
 backend/**/obj/
 backend/**/*.user

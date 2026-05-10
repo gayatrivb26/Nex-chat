@@ -10,19 +10,39 @@ public class ReadinessHealthCheck(
     IConnectionMultiplexer redis) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+        HealthCheckContext ctx, CancellationToken ct = default)
     {
         var data = new Dictionary<string, object>();
 
-        var dbOk = await db.Database.CanConnectAsync(cancellationToken);
-        data["postgres"] = dbOk ? "ok" : "unavailable";
+        // PostgreSQL
+        bool dbOk;
+        try
+        {
+            dbOk = await db.Database.CanConnectAsync(ct);
+            data["postgres"] = dbOk ? "healthy" : "unreachable";
+        }
+        catch (Exception ex)
+        {
+            dbOk = false;
+            data["postgres"] = ex.Message;
+        }
 
-        var redisPing = await redis.GetDatabase().PingAsync();
-        data["redis_ms"] = redisPing.TotalMilliseconds;
+        // Redis
+        bool redisOk;
+        try
+        {
+            var ping = await redis.GetDatabase().PingAsync();
+            redisOk = ping.TotalMilliseconds < 5000;
+            data["redis_ms"] = (long)ping.TotalMilliseconds;
+        }
+        catch (Exception ex)
+        {
+            redisOk = false;
+            data["redis"] = ex.Message;
+        }
 
-        return dbOk && redis.IsConnected
-            ? HealthCheckResult.Healthy("Ready", data)
-            : HealthCheckResult.Unhealthy("Dependencies are not ready", data: data);
+        return dbOk && redisOk
+            ? HealthCheckResult.Healthy("All dependencies healthy", data)
+            : HealthCheckResult.Unhealthy("One or more dependencies are unavailable", data: data);
     }
 }

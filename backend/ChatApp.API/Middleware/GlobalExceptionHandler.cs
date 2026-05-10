@@ -14,69 +14,46 @@ namespace ChatApp.API.Middleware;
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
     : IExceptionHandler
 {
-    private static readonly JsonSerializerOptions JsonOptions =
-        new(JsonSerializerDefaults.Web);
-
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
+ 
     public async ValueTask<bool> TryHandleAsync(
-        HttpContext httpContext,
-        Exception exception,
-        CancellationToken cancellationToken)
+        HttpContext ctx, Exception exception, CancellationToken ct)
     {
-        var (statusCode, message, errors) = MapException(exception);
-
-        logger.LogError(exception,
-            "Unhandled exception [{Type}] on {Method} {Path}: {Message}",
-            exception.GetType().Name,
-            httpContext.Request.Method,
-            httpContext.Request.Path,
-            exception.Message);
-
-        httpContext.Response.StatusCode = statusCode;
-        httpContext.Response.ContentType = "application/json";
-
-        var response = ApiResponse<object>.Fail(message, errors);
-        await httpContext.Response.WriteAsync(
-            JsonSerializer.Serialize(response, JsonOptions), cancellationToken);
-
+        var (status, message, errors) = MapException(exception);
+ 
+        if (status == 500)
+            logger.LogError(exception, "Unhandled exception [{Type}] {Method} {Path}",
+                exception.GetType().Name, ctx.Request.Method, ctx.Request.Path);
+ 
+        ctx.Response.StatusCode  = status;
+        ctx.Response.ContentType = "application/json";
+ 
+        var body = new
+        {
+            statusCode = status,
+            message,
+            errors,
+            traceId = ctx.TraceIdentifier
+        };
+ 
+        await ctx.Response.WriteAsync(
+            System.Text.Json.JsonSerializer.Serialize(body, JsonOptions), ct);
+ 
         return true;
     }
-
-    private static (int statusCode, string message, List<string>? errors) MapException(Exception ex)
+ 
+    private static (int status, string message, List<string>? errors) MapException(Exception ex)
         => ex switch
         {
-            ValidationException ve => (
-                (int)HttpStatusCode.BadRequest,
-                "Validation failed.",
+            FluentValidation.ValidationException ve => (400, "Validation failed.",
                 ve.Errors.Select(e => e.ErrorMessage).ToList()),
-
-            KeyNotFoundException => (
-                (int)HttpStatusCode.NotFound,
-                ex.Message,
-                null),
-
-            UnauthorizedAccessException => (
-                (int)HttpStatusCode.Unauthorized,
-                ex.Message,
-                null),
-
-            InvalidOperationException when ex.Message == "2FA_REQUIRED" => (
-                (int)HttpStatusCode.PreconditionRequired,
-                "Two-factor authentication code required.",
-                null),
-
-            InvalidOperationException => (
-                (int)HttpStatusCode.BadRequest,
-                ex.Message,
-                null),
-
-            OperationCanceledException => (
-                499, // Client Closed Request (nginx convention)
-                "Request was cancelled.",
-                null),
-
-            _ => (
-                (int)HttpStatusCode.InternalServerError,
-                "An unexpected error occurred. Please try again.",
-                null)
+            KeyNotFoundException         => (404, ex.Message, null),
+            UnauthorizedAccessException  => (401, ex.Message, null),
+            InvalidOperationException { Message: "2FA_REQUIRED" }
+                                         => (428, "Two-factor authentication code required.", null),
+            InvalidOperationException    => (400, ex.Message, null),
+            OperationCanceledException   => (499, "Request cancelled.", null),
+            _                            => (500, "An unexpected error occurred.", null)
         };
 }

@@ -14,6 +14,8 @@ public class SendMessageHandler(
 {
     public async Task<MessageDto> Handle(SendMessageCommand cmd, CancellationToken ct)
     {
+        // purposely reference presence to avoid CS9113 (unused parameter) when not needed yet
+        _ = presence;
         var isMember = await uow.Conversations.IsUserMemberAsync(cmd.ConversationId, cmd.SenderId, ct);
         if (!isMember) throw new UnauthorizedAccessException("Not a member of this conversation.");
 
