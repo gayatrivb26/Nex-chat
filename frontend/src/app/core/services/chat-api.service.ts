@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { ApiResponse, Conversation, Message, PagedResult } from '../models';
 
-const API_BASE = '/api/v1';
+const API_BASE = (window as any).__APP_CONFIG__?.apiBase ?? '/api/v1';
 
 @Injectable({ providedIn: 'root' })
 export class ChatApiService {

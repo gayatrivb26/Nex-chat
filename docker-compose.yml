@@ -502,6 +502,8 @@ services:
         ipv4_address: 172.20.0.60
     environment:
       NODE_ENV: development
+      API_BASE: "http://api:5000/api/v1"
+      WS_BASE: "http://api:5000/hubs"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4200"]
       interval: 20s

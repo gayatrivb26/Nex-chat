@@ -15,8 +15,12 @@ export class SignalrService {
     if (this.connectPromise) return this.connectPromise;
 
     this.connectPromise = (async () => {
+      const wsBase = (window as any).__APP_CONFIG__?.wsBase ?? '/hubs';
+      const base = wsBase.endsWith('/') ? wsBase.slice(0, -1) : wsBase;
+      const hubUrl = `${base}/chat`;
+
       this.connection = new signalR.HubConnectionBuilder()
-        .withUrl('/hubs/chat', { accessTokenFactory: () => this.tokens.accessToken() ?? '' })
+        .withUrl(hubUrl, { accessTokenFactory: () => this.tokens.accessToken() ?? '' })
         .withAutomaticReconnect()
         .configureLogging(signalR.LogLevel.Warning)
         .build();

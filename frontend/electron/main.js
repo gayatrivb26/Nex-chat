@@ -24,7 +24,13 @@ function createWindow() {
   if (process.env.ELECTRON_START_URL) {
     mainWindow.loadURL(process.env.ELECTRON_START_URL);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/nexchat/browser/index.html'));
+    const legacyPath = path.join(__dirname, '../dist/nexchat/browser/index.html');
+    const newPath = path.join(__dirname, '../dist/nexchat/index.html');
+    if (require('fs').existsSync(legacyPath)) {
+      mainWindow.loadFile(legacyPath);
+    } else {
+      mainWindow.loadFile(newPath);
+    }
   }
 
   mainWindow.on('close', (event) => {
