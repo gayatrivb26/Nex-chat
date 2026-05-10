@@ -14,4 +14,5 @@ public interface IFileStorageService
     Task DeleteAsync(string bucket, string objectName, CancellationToken ct = default);
     Task<bool> ObjectExistsAsync(string bucket, string objectName, CancellationToken ct = default);
     Task<Stream> DownloadAsync(string bucket, string objectName, CancellationToken ct = default);
+    Task DownloadToFileAsync(string bucket, string objectName, string destinationPath, CancellationToken ct = default);
 }

@@ -22,6 +22,7 @@ x-api-env: &api-env
   MinIO__Endpoint: "${MINIO_ENDPOINT}"
   MinIO__AccessKey: "${MINIO_ROOT_USER}"
   MinIO__SecretKey: "${MINIO_ROOT_PASSWORD}"
+  MinIO__PublicUrl: "${MINIO_PUBLIC_URL:-http://localhost:9000}"
   Jwt__Issuer: "${JWT_ISSUER}"
   Jwt__Audience: "${JWT_AUDIENCE}"
   Jwt__AccessTokenExpiryMinutes: "${JWT_ACCESS_TOKEN_EXPIRY_MINUTES}"
@@ -201,6 +202,44 @@ services:
           cpus: "2"
           memory: 2G
 
+  # ============================================================
+  # WORKER (Kafka consumers)
+  # ============================================================
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: ChatApp.Worker/Dockerfile
+    container_name: nexchat-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      <<: *api-env
+      INSTANCE_ID: "worker-1"
+    volumes:
+      - ./secrets:/run/secrets:ro
+    networks:
+      chatapp-network:
+        ipv4_address: 172.20.0.53
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:5000/ || exit 0"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
   kafka-init:
     image: confluentinc/cp-kafka:7.5.0
     container_name: nexchat-kafka-init
@@ -219,6 +258,7 @@ services:
       kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic calls --partitions 3 --replication-factor 1 --config retention.ms=604800000
       kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic analytics --partitions 6 --replication-factor 1 --config retention.ms=2592000000
       kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic media.processing --partitions 3 --replication-factor 1 --config retention.ms=86400000
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic deadletter.messages.sent --partitions 3 --replication-factor 1 --config retention.ms=1209600000
       echo 'Kafka topics created successfully'
       kafka-topics --bootstrap-server kafka:9092 --list
       "

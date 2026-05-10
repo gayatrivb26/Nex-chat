@@ -2,12 +2,14 @@ using ChatApp.Application.Interfaces;
 using ChatApp.Domain.Interfaces;
 using ChatApp.Infrastructure.Data;
 using ChatApp.Infrastructure.Data.Repositories;
+using ChatApp.Infrastructure.Jobs;
 using ChatApp.Infrastructure.Messaging;
 using ChatApp.Infrastructure.Security;
 using ChatApp.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Minio;
 using StackExchange.Redis;
 
 namespace ChatApp.Infrastructure;
@@ -40,11 +42,29 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, TokenService>();
         services.AddSingleton<ITotpService, TotpService>();
         services.AddSingleton<IKafkaProducer, KafkaProducer>();
+
+        services.AddSingleton<IMinioClient>(_ =>
+        {
+            var endpoint = configuration["MinIO:Endpoint"] ?? "localhost:9000";
+            var accessKey = configuration["MinIO:AccessKey"]
+                ?? throw new InvalidOperationException("MinIO access key is not configured.");
+            var secretKey = configuration["MinIO:SecretKey"]
+                ?? throw new InvalidOperationException("MinIO secret key is not configured.");
+            var useSsl = bool.TryParse(configuration["MinIO:UseSSL"], out var configuredUseSsl) && configuredUseSsl;
+
+            return new MinioClient()
+                .WithEndpoint(endpoint)
+                .WithCredentials(accessKey, secretKey)
+                .WithSSL(useSsl)
+                .Build();
+        });
+
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IPushNotificationService, PushNotificationService>();
         services.AddScoped<IFileStorageService, FileStorageService>();
         services.AddScoped<IVirusScanService, VirusScanService>();
         services.AddScoped<IMediaProcessingService, MediaProcessingService>();
+        services.AddScoped<MediaProcessingJob>();
         services.AddSingleton<IEncryptionService, AesEncryptionService>();
         services.AddScoped<IRateLimitService, RedisRateLimitService>();
 

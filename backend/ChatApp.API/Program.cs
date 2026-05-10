@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using ChatApp.API.Authorization;
 using ChatApp.API.Health;
 using ChatApp.API.Hubs;
+using ChatApp.API.Messaging;
 using ChatApp.API.Middleware;
 using ChatApp.Application;
 using ChatApp.Domain.Enums;
@@ -43,6 +44,7 @@ try
     // ─── Application + Infrastructure DI ─────────────────────────────────────
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddKafkaConsumers();
     builder.Services.AddHttpContextAccessor();
 
     // ─── Authorization Handlers ───────────────────────────────────────────────

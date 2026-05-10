@@ -13,7 +13,7 @@ namespace ChatApp.API.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/notifications")]
-public class NotificationsController(IUnitOfWork uow) : ControllerBase
+public class NotificationsController(IUnitOfWork uow, IPushNotificationService pushNotifications) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IEnumerable<NotificationDto>>>> GetNotifications(
@@ -40,5 +40,34 @@ public class NotificationsController(IUnitOfWork uow) : ControllerBase
     {
         await uow.Notifications.MarkAllReadAsync(User.GetUserId(), ct);
         return Ok(ApiResponse<object>.Ok(new { }));
+    }
+
+    [HttpPost("device-token")]
+    public async Task<ActionResult<ApiResponse<object>>> RegisterDeviceToken(
+        RegisterDeviceTokenRequest request,
+        CancellationToken ct)
+    {
+        ValidateDeviceToken(request.FcmToken);
+        if (string.IsNullOrWhiteSpace(request.DeviceType) || request.DeviceType.Length > 50)
+            throw new InvalidOperationException("Invalid device type.");
+
+        await pushNotifications.RegisterDeviceTokenAsync(User.GetUserId(), request.FcmToken, request.DeviceType, ct);
+        return Ok(ApiResponse<object>.Ok(new { }));
+    }
+
+    [HttpPost("device-token/revoke")]
+    public async Task<ActionResult<ApiResponse<object>>> UnregisterDeviceToken(
+        UnregisterDeviceTokenRequest request,
+        CancellationToken ct)
+    {
+        ValidateDeviceToken(request.FcmToken);
+        await pushNotifications.UnregisterDeviceTokenAsync(User.GetUserId(), request.FcmToken, ct);
+        return Ok(ApiResponse<object>.Ok(new { }));
+    }
+
+    private static void ValidateDeviceToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || token.Length > 4096)
+            throw new InvalidOperationException("Invalid device token.");
     }
 }
